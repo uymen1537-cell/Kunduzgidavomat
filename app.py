@@ -12,7 +12,6 @@ from openpyxl.utils import get_column_letter
 app = Flask(__name__)
 
 # ==================== PIN-KODLAR SOZLAMALARI ====================
-# Render Environment Variables orqali ham o'zgartirish mumkin
 ROLE_PINS = {
     "ustoz": {
         "pin": os.environ.get("USTOZ_PIN", "1111"),
@@ -31,13 +30,16 @@ ROLE_PINS = {
 # ==================== POSTGRESQL BAZA SOZLAMALARI ====================
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///local_davomat.db")
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 TASHKENT_TZ = timezone(timedelta(hours=5))
+
 
 def get_tashkent_today():
     return datetime.now(TASHKENT_TZ).date()
@@ -143,7 +145,7 @@ def get_data():
 
 @app.route("/api/students", methods=["POST"])
 def add_student():
-    data = request.get_json()
+    data = request.get_json() or {}
     full_name = (data.get("full_name") or "").strip()
     class_name = (data.get("class_name") or "").strip()
 
@@ -183,7 +185,7 @@ def delete_student(student_id):
 
 @app.route("/api/attendance/single", methods=["POST"])
 def save_single_attendance():
-    data = request.get_json()
+    data = request.get_json() or {}
     target_date = datetime.strptime(data.get("date"), "%Y-%m-%d").date()
     student_id = data.get("student_id")
     status = data.get("status")
@@ -214,7 +216,7 @@ def save_single_attendance():
 
 @app.route("/api/attendance/bulk", methods=["POST"])
 def save_bulk_attendance():
-    data = request.get_json()
+    data = request.get_json() or {}
     target_date = datetime.strptime(data.get("date"), "%Y-%m-%d").date()
     records_dict = data.get("records", {})
 
