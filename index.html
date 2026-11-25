@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maktab Davomat Tizimi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ==================== 1. LOGIN OYNASI (TIZIMGA KIRISH) ==================== -->
+<div id="loginScreen" class="login-wrapper">
+    <div class="login-card card">
+        <div class="login-header">
+            <div class="logo-box login-logo">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </div>
+            <div>
+                <h2>Tizimga kirish</h2>
+                <p>Rolni tanlang va PIN-kodni kiriting.</p>
+            </div>
+        </div>
+
+        <form id="loginForm">
+            <label class="field-label">Rolni tanlang</label>
+            <div class="role-grid">
+                <label class="role-option active" data-role="ustoz">
+                    <input type="radio" name="role" value="ustoz" checked>
+                    <span class="radio-circle"></span>
+                    <div class="role-text">
+                        <strong>Ustoz</strong>
+                        <span>Tarbiyachi</span>
+                    </div>
+                </label>
+
+                <label class="role-option" data-role="oshpaz">
+                    <input type="radio" name="role" value="oshpaz">
+                    <span class="radio-circle"></span>
+                    <div class="role-text">
+                        <strong>Oshpaz</strong>
+                        <span>Oshxona</span>
+                    </div>
+                </label>
+
+                <label class="role-option" data-role="admin">
+                    <input type="radio" name="role" value="admin">
+                    <span class="radio-circle"></span>
+                    <div class="role-text">
+                        <strong>Super Admin</strong>
+                        <span>Nazorat</span>
+                    </div>
+                </label>
+            </div>
+
+            <label class="field-label" for="pinInput">PIN-kod</label>
+            <input type="password" id="pinInput" class="form-input pin-input" placeholder="PIN-kodni kiriting" inputmode="numeric" required autofocus>
+            
+            <p id="loginError" class="login-error"></p>
+
+            <button type="submit" class="btn btn-primary btn-login">Kirish</button>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== 2. OSHPAZ REJIMI (ORTIQCHA TUGMALARSIZ) ==================== -->
+<div id="chefScreen" class="chef-wrapper hidden">
+    <div class="chef-card card">
+        <div class="chef-live-dot">
+            <span class="pulse-dot"></span> Jonli kuzatuv · <span id="chefDateLabel">Bugun</span>
+        </div>
+        <div class="chef-number" id="chefPresentCount">0</div>
+        <div class="chef-subtitle">ta o'quvchi bor (+)</div>
+        <button id="chefLogoutBtn" class="chef-exit-link" title="Tizimdan chiqish">Chiqish</button>
+    </div>
+</div>
+
+<!-- ==================== 3. ASOSIY TIZIM (USTOZ VA SUPER ADMIN) ==================== -->
+<div id="mainAppScreen" class="app-container hidden">
+    <!-- YUQORI HEADER PANEL -->
+    <header class="top-header card">
+        <div class="header-left">
+            <div class="logo-box">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </div>
+            <div class="title-info">
+                <h1>Maktab Davomat Nazorati</h1>
+                <p id="liveClockText">Yuklanmoqda... (UTC+5)</p>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="date-picker-box">
+                <input type="date" id="attendanceDate" title="Sanani tanlash">
+            </div>
+            <button id="themeToggleBtn" class="btn btn-outline">🌙 Kechki rejim</button>
+            <span id="currentRoleBadge" class="badge badge-db">Ustoz</span>
+            <button id="logoutBtn" class="btn btn-outline">Chiqish</button>
+        </div>
+    </header>
+
+    <!-- NAVIGATSIYA TABLARI -->
+    <nav class="nav-tabs card">
+        <button class="tab-btn active" data-tab="attendanceTab">1. Davomat</button>
+        <button class="tab-btn" data-tab="studentsTab">2. O'quvchilar</button>
+        <button class="tab-btn" data-tab="guideTab">3. Tezkor tugmalar</button>
+    </nav>
+
+    <!-- ==================== DAVOMAT BO'LIMI ==================== -->
+    <main id="attendanceTab" class="tab-content active">
+        <section class="stats-grid">
+            <div class="stat-card card">
+                <span class="stat-label">Jami</span>
+                <span class="stat-value" id="statTotal">0</span>
+            </div>
+            <div class="stat-card card stat-present">
+                <span class="stat-label">Bor (+)</span>
+                <span class="stat-value" id="statPresent">0</span>
+            </div>
+            <div class="stat-card card stat-absent">
+                <span class="stat-label">Yo'q (-)</span>
+                <span class="stat-value" id="statAbsent">0</span>
+            </div>
+            <div class="stat-card card stat-unmarked">
+                <span class="stat-label">Belgilanmagan</span>
+                <span class="stat-value" id="statUnmarked">0</span>
+            </div>
+        </section>
+
+        <section class="main-panel card">
+            <div class="db-banner">
+                Baza rejimi: <strong>PostgreSQL (Doimiy baza)</strong> · Har bir kun alohida saqlanadi, 1 oylik (.xlsx) hisobotni yuklab olish mumkin.
+            </div>
+
+            <div class="toolbar">
+                <div class="filters">
+                    <select id="classFilter" class="form-select">
+                        <option value="ALL">Barcha sinflar</option>
+                    </select>
+                    <input type="text" id="searchInput" class="form-input" placeholder="Ism yoki familiya bo'yicha qidirish...">
+                </div>
+
+                <div class="export-actions">
+                    <button id="exportDailyBtn" class="btn btn-soft-blue">Kunlik Excel (.xlsx)</button>
+                    <button id="exportMonthlyBtn" class="btn btn-primary">1 oylik Excel (<span id="currentMonthLabel">2026-11</span>)</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="attendance-table" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>O'quvchi</th>
+                            <th style="width: 110px;">Sinf</th>
+                            <th style="width: 240px;">Davomat (+ / -)</th>
+                            <th>Sabab</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="footer-status" id="unmarkedHint">Belgilanmagan: 0 nafar</div>
+                <div class="footer-buttons">
+                    <button id="markAllPresentBtn" class="btn btn-outline">Barchasini "Bor (+)"</button>
+                    <button id="saveAttendanceBtn" class="btn btn-primary">Hammasini saqlash</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== O'QUVCHILAR BO'LIMI ==================== -->
+    <section id="studentsTab" class="tab-content">
+        <div class="card main-panel">
+            <h2 class="section-title">Yangi o'quvchi qo'shish</h2>
+            <form id="addStudentForm" class="add-student-form">
+                <input type="text" id="newStudentName" class="form-input" placeholder="O'quvchi F.I.Sh (Masalan: G'aybullayev Oybek)" required>
+                <input type="text" id="newStudentClass" class="form-input" placeholder="Sinf (Masalan: 9-B)" required>
+                <button type="submit" class="btn btn-primary">+ O'quvchi qo'shish</button>
+            </form>
+
+            <hr class="divider">
+
+            <div class="toolbar">
+                <h2 class="section-title">Barcha o'quvchilar ro'yxati</h2>
+                <input type="text" id="manageSearchInput" class="form-input" placeholder="Ro'yxatdan izlash...">
+            </div>
+
+            <div class="table-wrapper">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>O'quvchi F.I.Sh</th>
+                            <th style="width: 120px;">Sinf</th>
+                            <th style="width: 140px;">Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manageStudentsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== YO'RIQNOMA BO'LIMI ==================== -->
+    <section id="guideTab" class="tab-content">
+        <div class="card main-panel">
+            <h2 class="section-title">Kompyuterda tezkor davomat qilish qoidalari</h2>
+            <ul class="guide-list">
+                <li><strong><code>+</code> yoki <code>=</code> tugmasi:</strong> Tanlangan o'quvchini <b>"Bor"</b> deb belgilaydi va avtomatik keyingi o'quvchiga o'tadi.</li>
+                <li><strong><code>-</code> tugmasi:</strong> Tanlangan o'quvchini <b>"Yo'q"</b> deb belgilaydi va avtomatik keyingi o'quvchiga o'tadi.</li>
+                <li><strong><code>↑</code> va <code>↓</code> tugmalari:</strong> Ro'yxat bo'ylab yuqoriga yoki pastga harakatlanish.</li>
+                <li><strong>Avtomatik kun almashinuvi:</strong> Toshkent vaqti (UTC+5) bilan soat 00:00 bo'lganda avtomatik yangi kunga o'tadi, oldingi kunlar bazada o'chmasdan saqlanadi.</li>
+            </ul>
+        </div>
+    </section>
+</div>
+
+<div id="toastNotification" class="toast">Saqlandi!</div>
+
+<script>
+    // ==================== GLOBAL O'ZGARUVCHILAR ====================
+    let students = [];
+    let attendanceMap = {};
+    let selectedRowIndex = 0;
+    let currentTashkentDate = "";
+    let chefPollingInterval = null;
+
+    // ==================== LOGIN VA ROL BOSHQARUVI ====================
+    document.querySelectorAll('.role-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('.role-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            opt.querySelector('input[type="radio"]').checked = true;
+            document.getElementById('pinInput').focus();
+        });
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const role = document.querySelector('input[name="role"]:checked').value;
+        const pin = document.getElementById('pinInput').value.trim();
+        const errorEl = document.getElementById('loginError');
+        errorEl.textContent = '';
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role, pin })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                localStorage.setItem('userRole', data.role);
+                localStorage.setItem('userRoleLabel', data.label);
+                document.getElementById('pinInput').value = '';
+                openScreenForRole(data.role, data.label);
+            } else {
+                errorEl.textContent = data.error || "PIN-kod noto'g'ri!";
+                document.getElementById('pinInput').select();
+            }
+        } catch (err) {
+            errorEl.textContent = "Server bilan bog'lanishda xatolik!";
+        }
+    });
+
+    function openScreenForRole(role, label) {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('chefScreen').classList.add('hidden');
+        document.getElementById('mainAppScreen').classList.add('hidden');
+
+        if (chefPollingInterval) {
+            clearInterval(chefPollingInterval);
+            chefPollingInterval = null;
+        }
+
+        if (role === 'oshpaz') {
+            document.getElementById('chefScreen').classList.remove('hidden');
+            updateChefCount();
+            // Har 1 soniyada avtomatik yangilanib turadi
+            chefPollingInterval = setInterval(updateChefCount, 1000);
+        } else {
+            document.getElementById('mainAppScreen').classList.remove('hidden');
+            document.getElementById('currentRoleBadge').textContent = label || 'Ustoz';
+            updateClockAndAutoDate();
+            fetchStudentsAndAttendance();
+        }
+    }
+
+    function logoutUser() {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userRoleLabel');
+        if (chefPollingInterval) {
+            clearInterval(chefPollingInterval);
+            chefPollingInterval = null;
+        }
+        document.getElementById('chefScreen').classList.add('hidden');
+        document.getElementById('mainAppScreen').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('pinInput').focus();
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+    document.getElementById('chefLogoutBtn').addEventListener('click', logoutUser);
+
+    // ==================== OSHPAZ REJIMI (HAR 1 SONIYADA YANGILANISH) ====================
+    async function updateChefCount() {
+        try {
+            const res = await fetch('/api/chef-stats');
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById('chefPresentCount').textContent = data.present_count;
+            document.getElementById('chefDateLabel').textContent = data.date;
+        } catch (e) {
+            console.error("Oshpaz yangilanish xatosi:", e);
+        }
+    }
+
+    // ==================== VAQT VA SANA (TOSHKENT UTC+5) ====================
+    function getTashkentDateObj() {
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        return new Date(utc + (3600000 * 5));
+    }
+
+    function formatDateISO(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function updateClockAndAutoDate() {
+        const tzDate = getTashkentDateObj();
+        const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
+        const days = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+
+        const dayStr = `${tzDate.getDate()}-${months[tzDate.getMonth()]} ${tzDate.getFullYear()}-yil, ${days[tzDate.getDay()]}`;
+        const timeStr = tzDate.toTimeString().split(' ')[0];
+        document.getElementById('liveClockText').innerHTML = `${dayStr} · Soat: <strong>${timeStr}</strong> (UTC+5)`;
+
+        const todayISO = formatDateISO(tzDate);
+        const dateInput = document.getElementById('attendanceDate');
+        if (!currentTashkentDate) {
+            currentTashkentDate = todayISO;
+            dateInput.value = todayISO;
+            updateMonthLabel(todayISO);
+        } else if (currentTashkentDate !== todayISO) {
+            saveAttendance(true);
+            currentTashkentDate = todayISO;
+            dateInput.value = todayISO;
+            updateMonthLabel(todayISO);
+            loadAttendanceForDate(todayISO);
+            showToast("Yangi kun boshlandi! Avtomatik yangi jadval ochildi.");
+        }
+    }
+
+    function updateMonthLabel(isoDate) {
+        document.getElementById('currentMonthLabel').textContent = isoDate.slice(0, 7);
+    }
+
+    // ==================== KECHKI / KUNDUZGI REJIM ====================
+    const themeBtn = document.getElementById('themeToggleBtn');
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        themeBtn.textContent = savedTheme === 'dark' ? '☀️ Kunduzgi rejim' : '🌙 Kechki rejim';
+    }
+    themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀️ Kunduzgi rejim' : '🌙 Kechki rejim';
+    });
+
+    // ==================== TABLARNI ALMASHTIRISH ====================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ==================== API BILAN ISHLASH ====================
+    async function fetchStudentsAndAttendance() {
+        const dateVal = document.getElementById('attendanceDate').value || formatDateISO(getTashkentDateObj());
+        try {
+            const res = await fetch(`/api/data?date=${dateVal}`);
+            const data = await res.json();
+            students = data.students || [];
+            attendanceMap = data.attendance || {};
+            populateClassFilter();
+            renderAttendanceTable();
+            renderManageStudentsTable();
+        } catch (err) {
+            showToast("Server bilan bog'lanishda xatolik!", true);
+        }
+    }
+
+    async function loadAttendanceForDate(dateVal) {
+        updateMonthLabel(dateVal);
+        await fetchStudentsAndAttendance();
+    }
+
+    function populateClassFilter() {
+        const select = document.getElementById('classFilter');
+        const currentVal = select.value;
+        const classes = [...new Set(students.map(s => s.class_name))].sort();
+        select.innerHTML = `<option value="ALL">Barcha sinflar</option>`;
+        classes.forEach(cls => {
+            select.innerHTML += `<option value="${cls}">${cls}</option>`;
+        });
+        if (classes.includes(currentVal)) select.value = currentVal;
+    }
+
+    // ==================== JADVALNI CHIZISH ====================
+    function getFilteredStudents() {
+        const cls = document.getElementById('classFilter').value;
+        const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        return students.filter(s => {
+            const matchClass = cls === 'ALL' || s.class_name === cls;
+            const matchSearch = s.full_name.toLowerCase().includes(q) || s.class_name.toLowerCase().includes(q);
+            return matchClass && matchSearch;
+        });
+    }
+
+    function renderAttendanceTable() {
+        const tbody = document.getElementById('attendanceTableBody');
+        const filtered = getFilteredStudents();
+        tbody.innerHTML = '';
+
+        if (selectedRowIndex >= filtered.length) selectedRowIndex = Math.max(0, filtered.length - 1);
+
+        filtered.forEach((student, idx) => {
+            const record = attendanceMap[student.id] || { status: null, reason: '' };
+            const isSelected = idx === selectedRowIndex;
+
+            let statusText = 'Belgilanmagan';
+            let statusClass = 'status-unmarked';
+            if (record.status === 'present') {
+                statusText = 'Bor (+)';
+                statusClass = 'status-present';
+            } else if (record.status === 'absent') {
+                statusText = "Yo'q (-)";
+                statusClass = 'status-absent';
+            }
+
+            const tr = document.createElement('tr');
+            if (isSelected) tr.classList.add('selected-row');
+            tr.dataset.index = idx;
+
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td class="student-name">${student.full_name}</td>
+                <td><span class="class-badge">${student.class_name}</span></td>
+                <td>
+                    <div class="att-controls">
+                        <button type="button" class="att-btn btn-plus ${record.status === 'present' ? 'active' : ''}" 
+                                onclick="setStatus(${student.id}, 'present', ${idx}, true)">+</button>
+                        <button type="button" class="att-btn btn-minus ${record.status === 'absent' ? 'active' : ''}" 
+                                onclick="setStatus(${student.id}, 'absent', ${idx}, true)">-</button>
+                        <span class="status-label ${statusClass}">${statusText}</span>
+                    </div>
+                </td>
+                <td>
+                    <input type="text" class="reason-input" placeholder="Sabab yozish..." 
+                           value="${record.reason || ''}"
+                           onchange="setReason(${student.id}, this.value)"
+                           onclick="event.stopPropagation()">
+                </td>
+            `;
+
+            tr.addEventListener('click', () => {
+                selectedRowIndex = idx;
+                highlightSelectedRow();
+            });
+
+            tbody.appendChild(tr);
+        });
+
+        updateStats();
+    }
+
+    function highlightSelectedRow() {
+        const rows = document.querySelectorAll('#attendanceTableBody tr');
+        rows.forEach((r, i) => {
+            r.classList.toggle('selected-row', i === selectedRowIndex);
+            if (i === selectedRowIndex) r.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }
+
+    function setStatus(studentId, status, rowIndex, moveNext = false) {
+        if (!attendanceMap[studentId]) attendanceMap[studentId] = { status: null, reason: '' };
+        attendanceMap[studentId].status = status;
+        if (status === 'present') attendanceMap[studentId].reason = '';
+
+        const filtered = getFilteredStudents();
+        if (moveNext && rowIndex < filtered.length - 1) {
+            selectedRowIndex = rowIndex + 1;
+        } else {
+            selectedRowIndex = rowIndex;
+        }
+
+        renderAttendanceTable();
+        autoSaveSingle(studentId);
+    }
+
+    function setReason(studentId, reasonText) {
+        if (!attendanceMap[studentId]) attendanceMap[studentId] = { status: 'absent', reason: '' };
+        attendanceMap[studentId].reason = reasonText;
+        autoSaveSingle(studentId);
+    }
+
+    function updateStats() {
+        let present = 0, absent = 0, unmarked = 0;
+        let firstUnmarkedName = null;
+
+        students.forEach(s => {
+            const st = attendanceMap[s.id]?.status;
+            if (st === 'present') present++;
+            else if (st === 'absent') absent++;
+            else {
+                unmarked++;
+                if (!firstUnmarkedName) firstUnmarkedName = s.full_name;
+            }
+        });
+
+        document.getElementById('statTotal').textContent = students.length;
+        document.getElementById('statPresent').textContent = present;
+        document.getElementById('statAbsent').textContent = absent;
+        document.getElementById('statUnmarked').textContent = unmarked;
+
+        const hintEl = document.getElementById('unmarkedHint');
+        hintEl.textContent = unmarked > 0
+            ? `Belgilanmagan: ${unmarked} nafar (masalan: ${firstUnmarkedName})`
+            : `Barcha o'quvchilar belgilandi!`;
+    }
+
+    // ==================== KLAVIATURA ORQALI TEZKOR BOSHQARUV ====================
+    document.addEventListener('keydown', (e) => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            if (e.key === 'Escape') document.activeElement.blur();
+            return;
+        }
+        if (document.getElementById('mainAppScreen').classList.contains('hidden')) return;
+        if (!document.getElementById('attendanceTab').classList.contains('active')) return;
+
+        const filtered = getFilteredStudents();
+        if (filtered.length === 0) return;
+
+        const currentStudent = filtered[selectedRowIndex];
+        if (!currentStudent) return;
+
+        if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+            e.preventDefault();
+            setStatus(currentStudent.id, 'present', selectedRowIndex, true);
+        } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+            e.preventDefault();
+            setStatus(currentStudent.id, 'absent', selectedRowIndex, true);
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selectedRowIndex < filtered.length - 1) {
+                selectedRowIndex++;
+                highlightSelectedRow();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selectedRowIndex > 0) {
+                selectedRowIndex--;
+                highlightSelectedRow();
+            }
+        }
+    });
+
+    // ==================== SAQLASH VA O'QUVCHI QO'SHISH ====================
+    async function autoSaveSingle(studentId) {
+        const dateVal = document.getElementById('attendanceDate').value;
+        const record = attendanceMap[studentId];
+        await fetch('/api/attendance/single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: dateVal,
+                student_id: studentId,
+                status: record.status,
+                reason: record.reason
+            })
+        });
+    }
+
+    async function saveAttendance(silent = false) {
+        const dateVal = document.getElementById('attendanceDate').value;
+        const res = await fetch('/api/attendance/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: dateVal, records: attendanceMap })
+        });
+        if (res.ok && !silent) showToast("Barcha ma'lumotlar bazaga saqlandi!");
+    }
+
+    document.getElementById('saveAttendanceBtn').addEventListener('click', () => saveAttendance(false));
+
+    document.getElementById('markAllPresentBtn').addEventListener('click', () => {
+        getFilteredStudents().forEach(s => {
+            attendanceMap[s.id] = { status: 'present', reason: '' };
+        });
+        renderAttendanceTable();
+        saveAttendance(false);
+    });
+
+    document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newStudentName').value.trim();
+        const cls = document.getElementById('newStudentClass').value.trim();
+        if (!name || !cls) return;
+
+        const res = await fetch('/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ full_name: name, class_name: cls })
+        });
+
+        if (res.ok) {
+            document.getElementById('newStudentName').value = '';
+            showToast(`${name} ro'yxatga qo'shildi!`);
+            await fetchStudentsAndAttendance();
+        }
+    });
+
+    async function deleteStudent(id, name) {
+        if (!confirm(`"${name}" ni ro'yxatdan o'chirishni tasdiqlaysizmi?`)) return;
+        const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast(`${name} o'chirildi.`);
+            await fetchStudentsAndAttendance();
+        }
+    }
+
+    function renderManageStudentsTable() {
+        const tbody = document.getElementById('manageStudentsBody');
+        const q = document.getElementById('manageSearchInput').value.toLowerCase().trim();
+        const filtered = students.filter(s => s.full_name.toLowerCase().includes(q) || s.class_name.toLowerCase().includes(q));
+
+        tbody.innerHTML = '';
+        filtered.forEach((s, idx) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td class="student-name">${s.full_name}</td>
+                    <td><span class="class-badge">${s.class_name}</span></td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id}, '${s.full_name.replace(/'/g, "\\'")}')">O'chirish</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // ==================== EXCEL YUKLAB OLISH ====================
+    document.getElementById('exportDailyBtn').addEventListener('click', () => {
+        const dateVal = document.getElementById('attendanceDate').value;
+        const cls = document.getElementById('classFilter').value;
+        window.location.href = `/api/export/daily?date=${dateVal}&class_name=${encodeURIComponent(cls)}`;
+    });
+
+    document.getElementById('exportMonthlyBtn').addEventListener('click', () => {
+        const monthVal = document.getElementById('attendanceDate').value.slice(0, 7);
+        const cls = document.getElementById('classFilter').value;
+        window.location.href = `/api/export/monthly?month=${monthVal}&class_name=${encodeURIComponent(cls)}`;
+    });
+
+    // ==================== HODISALAR VA ISHGA TUSHIRISH ====================
+    document.getElementById('attendanceDate').addEventListener('change', (e) => loadAttendanceForDate(e.target.value));
+    document.getElementById('classFilter').addEventListener('change', () => { selectedRowIndex = 0; renderAttendanceTable(); });
+    document.getElementById('searchInput').addEventListener('input', () => { selectedRowIndex = 0; renderAttendanceTable(); });
+    document.getElementById('manageSearchInput').addEventListener('input', renderManageStudentsTable);
+
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById('toastNotification');
+        toast.textContent = msg;
+        toast.style.background = isError ? '#dc2626' : '#1e293b';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    initTheme();
+    setInterval(updateClockAndAutoDate, 1000);
+
+    // Agar oldin tizimga kirgan bo'lsa, avtomatik o'sha ekranni ochish
+    const savedRole = localStorage.getItem('userRole');
+    const savedLabel = localStorage.getItem('userRoleLabel');
+    if (savedRole) {
+        openScreenForRole(savedRole, savedLabel);
+    }
+</script>
+</body>
+</html>
